@@ -1,0 +1,158 @@
+cmake_minimum_required(VERSION 3.16)
+project(MyProject VERSION 1.0.0 LANGUAGES CXX)
+
+# Опции для CI/CD
+option(BUILD_TESTING "Build tests" ON)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+option(ENABLE_SANITIZERS "Enable sanitizers" OFF)
+option(ENABLE_STATIC_ANALYSIS "Enable static analysis" OFF)
+
+# Настройки компилятора
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Настройки сборки
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Включение тестов
+if(BUILD_TESTING)
+    enable_testing()
+    find_package(GTest REQUIRED)
+endif()
+
+# Настройки покрытия кода
+if(ENABLE_COVERAGE)
+    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
+endif()
+
+# Настройки санитайзеров
+if(ENABLE_SANITIZERS)
+    set(SANITIZER_TYPE "address" CACHE STRING "Sanitizer type")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=${SANITIZER_TYPE} -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${SANITIZER_TYPE}")
+endif()
+
+# Настройки статического анализа
+if(ENABLE_STATIC_ANALYSIS)
+    set(STATIC_ANALYZER "cppcheck" CACHE STRING "Static analyzer")
+    if(STATIC_ANALYZER STREQUAL "clang-tidy")
+        set(CMAKE_CXX_CLANG_TIDY clang-tidy)
+    endif()
+endif()
+
+# Поиск зависимостей
+find_package(PkgConfig REQUIRED)
+
+# Основная библиотека
+add_library(${PROJECT_NAME} SHARED
+    src/main.cpp
+    src/utils.cpp
+)
+
+# Заголовочные файлы
+target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+# Свойства библиотеки
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    PUBLIC_HEADER include/${PROJECT_NAME}.h
+)
+
+# Основное приложение
+add_executable(${PROJECT_NAME}_app
+    src/app.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_app PRIVATE ${PROJECT_NAME})
+
+# Тесты
+if(BUILD_TESTING)
+    add_executable(${PROJECT_NAME}_tests
+        tests/test_main.cpp
+        tests/test_utils.cpp
+    )
+    
+    target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+        ${PROJECT_NAME}
+        GTest::gtest
+        GTest::gtest_main
+    )
+    
+    add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests)
+endif()
+
+# Покрытие кода
+if(ENABLE_COVERAGE)
+    find_program(GCOVR_PATH gcovr)
+    if(GCOVR_PATH)
+        add_custom_target(coverage
+            COMMAND ${GCOVR_PATH} --root . --exclude tests/ --exclude build/ --html --html-details -o coverage/index.html
+            COMMAND ${GCOVR_PATH} --root . --exclude tests/ --exclude build/ --xml -o coverage.xml
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating coverage report"
+        )
+    endif()
+endif()
+
+# Установка
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_app
+    EXPORT ${PROJECT_NAME}Targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    PUBLIC_HEADER DESTINATION include
+)
+
+install(FILES include/${PROJECT_NAME}.h
+    DESTINATION include
+)
+
+# Экспорт конфигурации
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Конфигурационный файл
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# CPack настройки
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "A C++ project built with CMake")
+set(CPACK_PACKAGE_VENDOR "Your Company")
+set(CPACK_PACKAGE_CONTACT "your.email@company.com")
+
+# Настройки для разных форматов пакетов
+set(CPACK_GENERATOR "TGZ;ZIP")
+if(UNIX AND NOT APPLE)
+    set(CPACK_GENERATOR "${CPACK_GENERATOR};DEB;RPM")
+endif()
+
+include(CPack) 

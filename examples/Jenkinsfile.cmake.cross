@@ -1,0 +1,20 @@
+@Library('jenkins-shared-library') _
+
+// Пример кросс-компиляции для ARM
+cmakePipeline([
+    buildType: 'Release',
+    compiler: 'gcc',
+    cppStandard: '17',
+    enableTests: false,
+    enableCoverage: false,
+    enableSanitizers: false,
+    enableStaticAnalysis: false,
+    packageManager: 'conan',
+    crossCompile: true,
+    targetPlatform: 'Linux',
+    targetArch: 'aarch64',
+    parallelJobs: 4,
+    timeout: 120,
+    nodeLabel: 'linux',
+    notifySlack: true
+]) 

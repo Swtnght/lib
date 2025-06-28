@@ -1,0 +1,20 @@
+@Library('jenkins-shared-library') _
+
+// Пример сборки Qt приложения в AstraLinux Orel (без публикации)
+astraLinuxPipeline([
+    astraVersion: 'orel',
+    baseImage: 'astra/orel:latest',
+    enableQt: true,
+    qtVersion: '5.15.2',
+    pushImage: false, // Отключена публикация
+    notifySlack: false, // Отключены уведомления
+    securityScan: true,
+    multiStage: true,
+    buildArgs: [
+        'BUILD_TYPE': 'Release',
+        'CMAKE_BUILD_TYPE': 'Release',
+        'QT_VERSION': '5.15.2'
+    ],
+    timeout: 60,
+    nodeLabel: 'astra-linux'
+]) 

@@ -1,0 +1,20 @@
+@Library('jenkins-shared-library') _
+
+// Пример отладочной сборки с покрытием кода и санитайзерами
+cmakePipeline([
+    buildType: 'Debug',
+    compiler: 'clang',
+    cppStandard: '20',
+    enableTests: true,
+    enableCoverage: true,
+    enableSanitizers: true,
+    sanitizerType: 'address',
+    enableStaticAnalysis: true,
+    staticAnalyzer: 'clang-tidy',
+    packageManager: 'vcpkg',
+    vcpkgTriplet: 'x64-linux',
+    parallelJobs: 2,
+    timeout: 90,
+    nodeLabel: 'linux',
+    notifySlack: true
+]) 

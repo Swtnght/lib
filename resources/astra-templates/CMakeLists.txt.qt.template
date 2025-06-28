@@ -1,0 +1,201 @@
+cmake_minimum_required(VERSION 3.16)
+project(QtAstraApp VERSION 1.0.0 LANGUAGES CXX)
+
+# Опции для CI/CD
+option(BUILD_TESTING "Build tests" ON)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+option(ENABLE_SANITIZERS "Enable sanitizers" OFF)
+option(ENABLE_STATIC_ANALYSIS "Enable static analysis" OFF)
+option(USE_QT6 "Use Qt6 instead of Qt5" OFF)
+
+# Настройки компилятора
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Настройки сборки
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Настройки для AstraLinux
+set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake")
+
+# Поиск Qt
+if(USE_QT6)
+    find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+    set(QT_VERSION "6")
+else()
+    find_package(Qt5 REQUIRED COMPONENTS Core Widgets Network)
+    set(QT_VERSION "5")
+endif()
+
+# Включение тестов
+if(BUILD_TESTING)
+    enable_testing()
+    find_package(GTest REQUIRED)
+endif()
+
+# Настройки покрытия кода
+if(ENABLE_COVERAGE)
+    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage -fprofile-arcs -ftest-coverage")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} --coverage")
+endif()
+
+# Настройки санитайзеров
+if(ENABLE_SANITIZERS)
+    set(SANITIZER_TYPE "address" CACHE STRING "Sanitizer type")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=${SANITIZER_TYPE} -fno-omit-frame-pointer")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=${SANITIZER_TYPE}")
+endif()
+
+# Настройки статического анализа
+if(ENABLE_STATIC_ANALYSIS)
+    set(STATIC_ANALYZER "cppcheck" CACHE STRING "Static analyzer")
+    if(STATIC_ANALYZER STREQUAL "clang-tidy")
+        set(CMAKE_CXX_CLANG_TIDY clang-tidy)
+    endif()
+endif()
+
+# Основное приложение
+set(APP_SOURCES
+    src/main.cpp
+    src/mainwindow.cpp
+    src/mainwindow.h
+    src/mainwindow.ui
+    resources/resources.qrc
+)
+
+# Создание исполняемого файла
+add_executable(${PROJECT_NAME} ${APP_SOURCES})
+
+# Настройка Qt
+if(USE_QT6)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt6::Core
+        Qt6::Widgets
+        Qt6::Network
+    )
+    
+    # Автоматическая обработка MOC, UIC, RCC
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        AUTOMOC ON
+        AUTOUIC ON
+        AUTORCC ON
+    )
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        Qt5::Core
+        Qt5::Widgets
+        Qt5::Network
+    )
+    
+    # Автоматическая обработка MOC, UIC, RCC
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        AUTOMOC ON
+        AUTOUIC ON
+        AUTORCC ON
+    )
+endif()
+
+# Заголовочные файлы
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# Свойства приложения
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    OUTPUT_NAME "app"
+)
+
+# Тесты
+if(BUILD_TESTING)
+    add_executable(${PROJECT_NAME}_tests
+        tests/test_main.cpp
+        tests/test_mainwindow.cpp
+    )
+    
+    target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+        ${PROJECT_NAME}
+        GTest::gtest
+        GTest::gtest_main
+    )
+    
+    if(USE_QT6)
+        target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+            Qt6::Core
+            Qt6::Widgets
+            Qt6::Test
+        )
+    else()
+        target_link_libraries(${PROJECT_NAME}_tests PRIVATE
+            Qt5::Core
+            Qt5::Widgets
+            Qt5::Test
+        )
+    endif()
+    
+    add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests)
+endif()
+
+# Покрытие кода
+if(ENABLE_COVERAGE)
+    find_program(GCOVR_PATH gcovr)
+    if(GCOVR_PATH)
+        add_custom_target(coverage
+            COMMAND ${GCOVR_PATH} --root . --exclude tests/ --exclude build/ --html --html-details -o coverage/index.html
+            COMMAND ${GCOVR_PATH} --root . --exclude tests/ --exclude build/ --xml -o coverage.xml
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Generating coverage report"
+        )
+    endif()
+endif()
+
+# Установка
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+)
+
+# Установка ресурсов
+install(DIRECTORY resources/
+    DESTINATION share/${PROJECT_NAME}/resources
+    FILES_MATCHING PATTERN "*.qrc"
+)
+
+# Создание .desktop файла для AstraLinux
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/package/${PROJECT_NAME}.desktop
+    DESTINATION share/applications
+)
+
+# Создание иконки
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/package/${PROJECT_NAME}.png
+    DESTINATION share/pixmaps
+)
+
+# CPack настройки для AstraLinux
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Qt приложение для AstraLinux")
+set(CPACK_PACKAGE_VENDOR "Your Company")
+set(CPACK_PACKAGE_CONTACT "your.email@company.com")
+
+# Настройки для разных форматов пакетов
+set(CPACK_GENERATOR "TGZ;ZIP")
+if(UNIX AND NOT APPLE)
+    set(CPACK_GENERATOR "${CPACK_GENERATOR};DEB;RPM")
+    
+    # Настройки для DEB пакета
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Your Name <your.email@company.com>")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt${QT_VERSION}core${QT_VERSION}, libqt${QT_VERSION}widgets${QT_VERSION}, libqt${QT_VERSION}network${QT_VERSION}")
+    set(CPACK_DEBIAN_PACKAGE_SECTION "Applications")
+    set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+    
+    # Настройки для RPM пакета
+    set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+    set(CPACK_RPM_PACKAGE_GROUP "Applications")
+    set(CPACK_RPM_PACKAGE_REQUIRES "qt${QT_VERSION}-qtbase, qt${QT_VERSION}-qtbase-gui, qt${QT_VERSION}-qtbase-network")
+endif()
+
+include(CPack) 

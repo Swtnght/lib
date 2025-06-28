@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Скрипт для сборки QOwnNotes в AstraLinux Orel
+# Основан на официальной документации: https://github.com/pbek/QOwnNotes
+
+set -e
+
+echo "🔧 Начинаем сборку QOwnNotes в AstraLinux..."
+
+# Проверяем наличие необходимых инструментов
+echo "📋 Проверка зависимостей..."
+which qmake || { echo "❌ qmake не найден"; exit 1; }
+which make || { echo "❌ make не найден"; exit 1; }
+which git || { echo "❌ git не найден"; exit 1; }
+
+# Проверяем версию Qt
+echo "🔍 Проверка версии Qt..."
+qmake -query QT_VERSION
+
+# Обновляем git submodules если есть
+if [ -f ".gitmodules" ]; then
+    echo "📦 Обновление git submodules..."
+    git submodule update --init --recursive
+fi
+
+# Переходим в директорию src
+cd src
+
+# Проверяем наличие .pro файла
+if [ ! -f "QOwnNotes.pro" ]; then
+    echo "❌ QOwnNotes.pro не найден в src/"
+    exit 1
+fi
+
+echo "✅ QOwnNotes.pro найден"
+
+# Сборка переводов (если нужно)
+if [ "$ENABLE_TRANSLATIONS" = "true" ]; then
+    echo "🌐 Сборка переводов..."
+    lrelease QOwnNotes.pro
+fi
+
+# Подготовка сборки
+echo "🔨 Подготовка сборки..."
+qmake QOwnNotes.pro
+
+# Сборка приложения
+echo "🏗️ Сборка QOwnNotes..."
+make -j${PARALLEL_JOBS:-4}
+
+# Проверяем результат сборки
+if [ -f "QOwnNotes" ]; then
+    echo "✅ QOwnNotes успешно собран!"
+    ls -la QOwnNotes
+else
+    echo "❌ Ошибка сборки QOwnNotes"
+    exit 1
+fi
+
+# Устанавливаем приложение (опционально)
+if [ "$INSTALL_APP" = "true" ]; then
+    echo "📦 Установка QOwnNotes..."
+    make install
+fi
+
+echo "🎉 Сборка QOwnNotes завершена успешно!" 

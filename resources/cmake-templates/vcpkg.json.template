@@ -1,0 +1,36 @@
+{
+  "name": "myproject",
+  "version": "1.0.0",
+  "description": "A C++ project built with CMake",
+  "homepage": "https://github.com/your-company/myproject",
+  "dependencies": [
+    {
+      "name": "gtest",
+      "version>=": "1.14.0"
+    },
+    {
+      "name": "fmt",
+      "version>=": "10.1.1"
+    },
+    {
+      "name": "spdlog",
+      "version>=": "1.12.0"
+    },
+    {
+      "name": "nlohmann-json",
+      "version>=": "3.11.2"
+    },
+    {
+      "name": "boost",
+      "version>=": "1.82.0",
+      "features": ["system", "filesystem", "thread"]
+    }
+  ],
+  "builtin-baseline": "2023-10-24",
+  "overrides": [
+    {
+      "name": "gtest",
+      "version": "1.14.0"
+    }
+  ]
+} 

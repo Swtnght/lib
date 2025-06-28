@@ -1,0 +1,23 @@
+@Library('jenkins-shared-library') _
+
+// Пример сборки QOwnNotes в AstraLinux Orel
+astraLinuxPipeline([
+    astraVersion: 'orel',
+    baseImage: 'astra/orel:latest',
+    enableQt: true,
+    qtVersion: '5.15.2',
+    projectType: 'qownnotes',
+    buildSystem: 'qmake',
+    enableTranslations: true,
+    parallelJobs: 4,
+    pushImage: false, // Отключена публикация
+    notifySlack: false, // Отключены уведомления
+    securityScan: true,
+    multiStage: true,
+    buildArgs: [
+        'QT_VERSION': '5.15.2',
+        'BUILD_TYPE': 'Release'
+    ],
+    timeout: 90, // Увеличиваем таймаут для QOwnNotes
+    nodeLabel: 'astra-linux'
+]) 
