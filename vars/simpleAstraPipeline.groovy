@@ -40,25 +40,6 @@ def call(Map config = [:]) {
         }
         
         stages {
-            stage('Checkout') {
-                steps {
-                    script {
-                        echo "🔍 Checkout кода для AstraLinux ${mergedConfig.astraVersion}..."
-                        checkout scm
-                        sh 'git log --oneline -5'
-                    }
-                }
-                post {
-                    success {
-                        script {
-                            if (mergedConfig.projectType == 'qownnotes') {
-                                astraUtils.prepareQOwnNotesProject(mergedConfig)
-                            }
-                        }
-                    }
-                }
-            }
-            
             stage('Validate Environment') {
                 steps {
                     script {
