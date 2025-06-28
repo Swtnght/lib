@@ -1,4 +1,4 @@
-@Library('jenkins-shared-library') _
+@Library('lib@develop') _
 
 // Пример сборки QOwnNotes в AstraLinux Orel
 astraLinuxPipeline([

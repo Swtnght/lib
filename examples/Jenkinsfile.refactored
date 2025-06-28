@@ -1,0 +1,15 @@
+@Library('lib@develop') _
+
+astraLinuxPipeline([
+    astraVersion: 'orel',
+    baseImage: 'astra/orel:latest',
+    imageName: 'my-qt-app',
+    imageTag: 'v1.0.0',
+    enableQt: true,
+    qtVersion: '5.15',
+    projectType: 'qownnotes',
+    buildSystem: 'qmake',
+    parallelJobs: 4,
+    securityScan: true,
+    runTests: true
+]) 
